@@ -594,6 +594,13 @@ impl Agent for CodexAgent {
                 }
                 EventMsg::AgentReasoningSectionBreak(_) => {
                     self.finish_current_reasoning_section(&args.session_id);
+                    if let Some(text) = self.take_reasoning_text(&args.session_id)
+                        && !text.trim().is_empty()
+                    {
+                        let (tx, rx) = oneshot::channel();
+                        self.send_thought_chunk(&args.session_id, text.into(), tx)?;
+                        rx.await.map_err(Error::into_internal_error)?;
+                    }
                 }
                 // MCP tool calls → ACP ToolCall/ToolCallUpdate
                 EventMsg::McpToolCallBegin(begin) => {
